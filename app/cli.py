@@ -82,6 +82,8 @@ def _build_parser() -> argparse.ArgumentParser:
     menubar_parser.add_argument("--log-file", type=Path, default=default_log_file())
     menubar_parser.add_argument("--startup-timeout", type=float, default=DEFAULT_STARTUP_TIMEOUT_SECONDS)
 
+    subparsers.add_parser("tray", help="Run the Windows system tray controller.")
+
     return parser
 
 
@@ -153,6 +155,12 @@ def _run_status(args: argparse.Namespace) -> None:
     print(f"Log file: {Path(metadata.log_file).expanduser()}")
 
 
+def run_tray_app() -> None:
+    from app.tray import run_tray_app as run
+
+    run()
+
+
 def _run_shutdown(args: argparse.Namespace) -> None:
     metadata, stale = load_running_metadata(args.pid_file)
     if metadata is None:
@@ -222,6 +230,12 @@ def main() -> None:
         return
     if command == "menubar":
         _run_menubar(args)
+        return
+    if command == "tray":
+        try:
+            run_tray_app()
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
         return
 
     raise SystemExit(f"Unsupported command: {command}")

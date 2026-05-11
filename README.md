@@ -92,6 +92,25 @@ uv run codex-lb-cinamon menubar --manage-server --start-on-launch
 codex-lb-cinamon menubar --base-url http://127.0.0.1:2455
 ```
 
+Windows 트레이 앱 실행:
+
+```powershell
+# 트레이 기능에 필요한 선택 의존성까지 설치
+pip install "codex-lb-cinamon[tray]"
+
+# 트레이 아이콘 실행
+codex-lb-cinamon tray
+```
+
+개발 체크아웃에서 실행한다면 선택 의존성을 동기화한 뒤 `uv run`으로 실행하면 됩니다.
+
+```powershell
+uv sync --extra tray
+uv run codex-lb-cinamon tray
+```
+
+`tray`는 Windows 시스템 트레이에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기, Windows 시작 프로그램 등록을 제어하는 앱입니다. Windows 전용이며, 서버가 꺼져 있으면 트레이 메뉴에서 시작할 수 있습니다.
+
 기본 PID 파일과 로그 파일은 아래 경로를 사용합니다.
 
 ```text
