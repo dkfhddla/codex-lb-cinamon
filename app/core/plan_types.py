@@ -5,11 +5,18 @@ from typing import Final
 ACCOUNT_PLAN_TYPES: Final[set[str]] = {
     "free",
     "plus",
+    "pro_lite",
     "pro",
     "team",
     "business",
     "enterprise",
     "edu",
+}
+
+ACCOUNT_PLAN_TYPE_ALIASES: Final[dict[str, str]] = {
+    "prolite": "pro_lite",
+    "pro-lite": "pro_lite",
+    "pro lite": "pro_lite",
 }
 
 RATE_LIMIT_PLAN_TYPES: Final[set[str]] = {
@@ -35,6 +42,7 @@ def normalize_account_plan_type(value: str | None) -> str | None:
     if not cleaned:
         return None
     normalized = cleaned.lower()
+    normalized = ACCOUNT_PLAN_TYPE_ALIASES.get(normalized, normalized)
     return normalized if normalized in ACCOUNT_PLAN_TYPES else None
 
 
@@ -43,6 +51,7 @@ def canonicalize_account_plan_type(value: str | None) -> str | None:
     if not cleaned:
         return None
     normalized = cleaned.lower()
+    normalized = ACCOUNT_PLAN_TYPE_ALIASES.get(normalized, normalized)
     if normalized in ACCOUNT_PLAN_TYPES:
         return normalized
     return cleaned
@@ -61,4 +70,5 @@ def normalize_rate_limit_plan_type(value: str | None) -> str | None:
     if not cleaned:
         return None
     normalized = cleaned.lower()
+    normalized = ACCOUNT_PLAN_TYPE_ALIASES.get(normalized, normalized)
     return normalized if normalized in RATE_LIMIT_PLAN_TYPES else None

@@ -18,6 +18,7 @@ from app.db.models import Account
 PLAN_CAPACITY_CREDITS_PRIMARY = {
     "free": 0.0,
     "plus": 225.0,
+    "pro_lite": 750.0,
     "business": 225.0,
     "team": 225.0,
     "edu": 225.0,
@@ -28,6 +29,7 @@ PLAN_CAPACITY_CREDITS_PRIMARY = {
 PLAN_CAPACITY_CREDITS_SECONDARY = {
     "free": 1134.0,
     "plus": 7560.0,
+    "pro_lite": 25200.0,
     "business": 7560.0,
     "team": 7560.0,
     "edu": 7560.0,

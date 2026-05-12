@@ -41,6 +41,13 @@ def test_capacity_for_plan():
     assert capacity_for_plan("unknown", "5h") is None
 
 
+def test_capacity_for_pro_lite_plan_aliases():
+    assert capacity_for_plan("pro_lite", "5h") == 750.0
+    assert capacity_for_plan("prolite", "5h") == 750.0
+    assert capacity_for_plan("pro_lite", "7d") == 25200.0
+    assert capacity_for_plan("prolite", "7d") == 25200.0
+
+
 def test_normalize_weekly_only_rows_prefers_newer_primary_over_stale_secondary():
     now = utcnow()
     weekly_primary = UsageWindowRow(
