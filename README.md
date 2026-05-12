@@ -71,6 +71,27 @@ codex-lb-cinamon shutdown
 codex-lb-cinamon serve
 ```
 
+macOS 메뉴바 앱 실행:
+
+```bash
+# 메뉴바 앱에서 서버 시작/종료까지 함께 제어
+codex-lb-cinamon menubar --manage-server --start-on-launch
+```
+
+개발 체크아웃에서 실행한다면 같은 명령 앞에 `uv run`을 붙이면 됩니다.
+
+```bash
+uv run codex-lb-cinamon menubar --manage-server --start-on-launch
+```
+
+`menubar --manage-server`는 macOS 상단 메뉴바에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기를 제어합니다. `--start-on-launch`를 함께 주면 메뉴바 앱 시작 시 추적된 백그라운드 서버가 없을 때 자동으로 서버를 시작합니다.
+
+이미 실행 중인 서버만 읽고 싶다면 기존처럼 base URL을 지정해 상태 앱으로만 실행할 수 있습니다.
+
+```bash
+codex-lb-cinamon menubar --base-url http://127.0.0.1:2455
+```
+
 기본 PID 파일과 로그 파일은 아래 경로를 사용합니다.
 
 ```text
@@ -80,7 +101,7 @@ Windows: %USERPROFILE%\.codex-lb\server.pid
 Windows: %USERPROFILE%\.codex-lb\server.log
 ```
 
-원하면 `start`에는 `--pid-file`, `--log-file`, `--host`, `--port`를 함께 줄 수 있고, `serve`에는 `--host`, `--port`, `--ssl-certfile`, `--ssl-keyfile`를 함께 줄 수 있습니다.
+원하면 `start`에는 `--pid-file`, `--log-file`, `--host`, `--port`를 함께 줄 수 있고, `serve`에는 `--host`, `--port`, `--ssl-certfile`, `--ssl-keyfile`를 함께 줄 수 있습니다. `menubar --manage-server`도 같은 서버 bind/TLS 옵션과 `--pid-file`, `--log-file`, `--startup-timeout`을 지원합니다.
 
 ## Remote Setup
 
