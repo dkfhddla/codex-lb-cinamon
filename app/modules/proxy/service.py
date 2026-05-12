@@ -26,6 +26,7 @@ from pydantic import ValidationError
 
 from app.core import shutdown as shutdown_state
 from app.core import usage as usage_core
+from app.core.active_requests import ActiveRequest, get_active_request_registry
 from app.core.auth.refresh import (
     RefreshError,
     pop_token_refresh_timeout_override,
@@ -2490,26 +2491,52 @@ class ProxyService:
 
             async def _call_chatgpt_compact(target: Account) -> ProviderCompactResponseResult:
                 adapter = cast(ChatGPTWebProviderAdapter, self._provider_adapter(CHATGPT_WEB_PROVIDER_KIND))
-                return await _call_compact_timeout(
-                    lambda: adapter.compact_response(
-                        self._chatgpt_provider_subject(target),
-                        payload,
-                        filtered,
-                    )
+                _register_active_proxy_request(
+                    request_id=request_id,
+                    provider_kind=CHATGPT_WEB_PROVIDER_KIND,
+                    routing_subject_id=target.id,
+                    account_id=target.id,
+                    model=payload.model,
+                    reasoning_effort=payload.reasoning.effort if payload.reasoning else None,
+                    transport=_REQUEST_TRANSPORT_HTTP,
+                    route_class=route_class,
                 )
+                try:
+                    return await _call_compact_timeout(
+                        lambda: adapter.compact_response(
+                            self._chatgpt_provider_subject(target),
+                            payload,
+                            filtered,
+                        )
+                    )
+                finally:
+                    _complete_active_proxy_request(request_id)
 
             async def _call_platform_compact(
                 identity: _SelectedPlatformIdentity,
             ) -> ProviderCompactResponseResult:
                 adapter = cast(OpenAIPlatformProviderAdapter, self._provider_adapter(OPENAI_PLATFORM_PROVIDER_KIND))
-                return await _call_compact_timeout(
-                    lambda: adapter.compact_response(
-                        self._platform_provider_subject(identity),
-                        payload,
-                        filtered,
-                        route_class=route_class,
-                    )
+                _register_active_proxy_request(
+                    request_id=request_id,
+                    provider_kind=OPENAI_PLATFORM_PROVIDER_KIND,
+                    routing_subject_id=identity.id,
+                    account_id=None,
+                    model=payload.model,
+                    reasoning_effort=payload.reasoning.effort if payload.reasoning else None,
+                    transport=_REQUEST_TRANSPORT_HTTP,
+                    route_class=route_class,
                 )
+                try:
+                    return await _call_compact_timeout(
+                        lambda: adapter.compact_response(
+                            self._platform_provider_subject(identity),
+                            payload,
+                            filtered,
+                            route_class=route_class,
+                        )
+                    )
+                finally:
+                    _complete_active_proxy_request(request_id)
 
             if isinstance(selected_subject, SelectedPlatformSubject):
                 provider_kind_value = OPENAI_PLATFORM_PROVIDER_KIND
@@ -6085,6 +6112,16 @@ class ProxyService:
                 session.pending_requests.append(request_state)
             request_enqueued = True
             await session.upstream.send_text(text_data)
+            _register_active_proxy_request(
+                request_id=request_state.request_id,
+                provider_kind=CHATGPT_WEB_PROVIDER_KIND,
+                routing_subject_id=session.account.id,
+                account_id=session.account.id,
+                model=request_state.model,
+                reasoning_effort=request_state.reasoning_effort,
+                transport=request_state.transport,
+                route_class=CHATGPT_PRIVATE_ROUTE_CLASS,
+            )
             session.last_used_at = time.monotonic()
         except ProxyResponseError:
             await self._cleanup_http_bridge_submit_interruption(
@@ -6257,6 +6294,7 @@ class ProxyService:
             if request_enqueued and request_state in session.pending_requests:
                 session.pending_requests.remove(request_state)
             session.queued_request_count = max(0, session.queued_request_count - 1)
+        _complete_active_proxy_request(request_state.request_id)
         if gate_acquired:
             _release_websocket_response_create_gate(request_state, session.response_create_gate)
         if release_reservation:
@@ -6292,6 +6330,7 @@ class ProxyService:
         request_state.event_queue = None
         if not removed:
             return False
+        _complete_active_proxy_request(request_state.request_id)
         _release_websocket_response_create_gate(request_state, session.response_create_gate)
         await self._release_websocket_reservation(request_state.api_key_reservation)
         request_state.api_key_reservation = None
@@ -7461,6 +7500,7 @@ class ProxyService:
         upstream_control: _WebSocketUpstreamControl,
         response_create_gate: asyncio.Semaphore,
     ) -> None:
+        _complete_active_proxy_request(request_state.request_id)
         status = "success"
         error_code = None
         error_message = None
@@ -7673,6 +7713,7 @@ class ProxyService:
 
         last_index = len(remaining) - 1
         for index, request_state in enumerate(remaining):
+            _complete_active_proxy_request(request_state.request_id)
             request_error_code = request_state.error_code_override or error_code
             request_error_message = request_state.error_message_override or error_message
             request_error_type = request_state.error_type_override or "server_error"
@@ -8742,6 +8783,16 @@ class ProxyService:
         response_create_lease = AdmissionLease(None)
 
         try:
+            _register_active_proxy_request(
+                request_id=request_id,
+                provider_kind=CHATGPT_WEB_PROVIDER_KIND,
+                routing_subject_id=account.id,
+                account_id=account.id,
+                model=model,
+                reasoning_effort=reasoning_effort,
+                transport=request_transport,
+                route_class=CHATGPT_PRIVATE_ROUTE_CLASS,
+            )
             response_create_lease = await self._get_work_admission().acquire_response_create()
             if upstream_stream_transport is not None:
                 stream = await adapter.stream_response_events(
@@ -8977,6 +9028,7 @@ class ProxyService:
             settlement.account_health_error = _should_penalize_stream_error(error_code)
             raise
         finally:
+            _complete_active_proxy_request(request_id)
             response_create_lease.release()
             input_tokens = usage.input_tokens if usage else None
             output_tokens = usage.output_tokens if usage else None
@@ -11753,6 +11805,36 @@ def _record_same_account_takeover(*, preferred_account_id: str | None, selected_
         bridge_same_account_takeover_total.labels(outcome="success").inc()
     else:
         bridge_same_account_takeover_total.labels(outcome="fallback").inc()
+
+
+def _register_active_proxy_request(
+    *,
+    request_id: str,
+    provider_kind: str | None,
+    routing_subject_id: str | None,
+    account_id: str | None,
+    model: str | None,
+    reasoning_effort: str | None,
+    transport: str | None,
+    route_class: str | None,
+) -> None:
+    get_active_request_registry().register(
+        ActiveRequest(
+            request_id=request_id,
+            provider_kind=provider_kind,
+            routing_subject_id=routing_subject_id,
+            account_id=account_id,
+            model=model or "",
+            reasoning_effort=reasoning_effort,
+            transport=transport,
+            route_class=route_class,
+            started_at=utcnow(),
+        )
+    )
+
+
+def _complete_active_proxy_request(request_id: str) -> None:
+    get_active_request_registry().complete(request_id)
 
 
 def _record_bridge_reattach(*, path: str, outcome: str) -> None:

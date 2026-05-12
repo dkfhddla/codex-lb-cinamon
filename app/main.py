@@ -58,6 +58,7 @@ from app.modules.proxy.ring_membership import (
     dynamic_bridge_ring_membership_enabled,
 )
 from app.modules.request_logs import api as request_logs_api
+from app.modules.runtime_status import api as runtime_status_api
 from app.modules.settings import api as settings_api
 from app.modules.sticky_sessions import api as sticky_sessions_api
 from app.modules.sticky_sessions.cleanup_scheduler import build_sticky_session_cleanup_scheduler
@@ -364,6 +365,7 @@ def create_app() -> FastAPI:
     app.include_router(accounts_api.router)
     app.include_router(dashboard_api.router)
     app.include_router(usage_api.router)
+    app.include_router(runtime_status_api.router)
     app.include_router(request_logs_api.router)
     app.include_router(oauth_api.router)
     app.include_router(dashboard_auth_api.router)

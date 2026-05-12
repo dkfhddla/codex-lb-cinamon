@@ -2595,13 +2595,26 @@ async def _maybe_handle_platform_responses(
         )
 
     try:
-        identity, result = await context.service.create_platform_response(
-            payload=payload,
-            api_key=api_key,
-            identity=selected.identity,
-            route_family=route_family,
+        proxy_service_module._register_active_proxy_request(
+            request_id=request_id,
+            provider_kind=OPENAI_PLATFORM_PROVIDER_KIND,
+            routing_subject_id=selected.identity.id,
+            account_id=None,
+            model=payload.model,
+            reasoning_effort=reasoning_effort,
+            transport="http",
             route_class=route_class,
         )
+        try:
+            identity, result = await context.service.create_platform_response(
+                payload=payload,
+                api_key=api_key,
+                identity=selected.identity,
+                route_family=route_family,
+                route_class=route_class,
+            )
+        finally:
+            proxy_service_module._complete_active_proxy_request(request_id)
     except OpenAIPlatformError as exc:
         await _release_reservation(reservation)
         return _logged_error_json_response(
@@ -2747,6 +2760,17 @@ async def _instrument_platform_stream(
     reasoning_tokens: int | None = None
     actual_service_tier: str | None = None
 
+    proxy_service_module._register_active_proxy_request(
+        request_id=request_id,
+        provider_kind=OPENAI_PLATFORM_PROVIDER_KIND,
+        routing_subject_id=routing_subject_id,
+        account_id=None,
+        model=model,
+        reasoning_effort=reasoning_effort,
+        transport="http",
+        route_class=route_class,
+    )
+
     async def _handle_line(line: str) -> str:
         nonlocal status, error_code, error_message, input_tokens, output_tokens, cached_input_tokens
         nonlocal reasoning_tokens, actual_service_tier
@@ -2785,6 +2809,7 @@ async def _instrument_platform_stream(
         async for line in upstream_stream:
             yield await _handle_line(line)
     finally:
+        proxy_service_module._complete_active_proxy_request(request_id)
         await _release_reservation(reservation)
         await context.service._write_request_log(
             account_id=None,

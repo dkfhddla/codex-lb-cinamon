@@ -8,6 +8,7 @@ from typing import cast
 from fastapi import Depends, FastAPI, Request, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.active_requests import get_active_request_registry
 from app.db.session import get_background_session, get_session
 from app.modules.accounts.repository import AccountsRepository
 from app.modules.accounts.service import AccountsService
@@ -31,6 +32,7 @@ from app.modules.proxy.service import ProxyService
 from app.modules.proxy.sticky_repository import StickySessionsRepository
 from app.modules.request_logs.repository import RequestLogsRepository
 from app.modules.request_logs.service import RequestLogsService
+from app.modules.runtime_status.service import RuntimeStatusService
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.service import SettingsService
 from app.modules.sticky_sessions.service import StickySessionsService
@@ -91,6 +93,12 @@ class RequestLogsContext:
     session: AsyncSession
     repository: RequestLogsRepository
     service: RequestLogsService
+
+
+@dataclass(slots=True)
+class RuntimeStatusContext:
+    session: AsyncSession
+    service: RuntimeStatusService
 
 
 @dataclass(slots=True)
@@ -238,6 +246,17 @@ def get_request_logs_context(
     repository = RequestLogsRepository(session)
     service = RequestLogsService(repository)
     return RequestLogsContext(session=session, repository=repository, service=service)
+
+
+def get_runtime_status_context(
+    session: AsyncSession = Depends(get_session),
+) -> RuntimeStatusContext:
+    service = RuntimeStatusService(
+        accounts_repo=AccountsRepository(session),
+        usage_repo=UsageRepository(session),
+        active_requests=get_active_request_registry(),
+    )
+    return RuntimeStatusContext(session=session, service=service)
 
 
 def get_settings_context(
