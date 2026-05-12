@@ -84,6 +84,14 @@ codex-lb-cinamon menubar --manage-server --start-on-launch
 uv run codex-lb-cinamon menubar --manage-server --start-on-launch
 ```
 
+터미널 없이 원클릭으로 실행하려면 Finder에서 repo 루트 폴더를 열고 `CodexLBCinamonMenubar.app` 아이콘을 더블클릭합니다.
+
+```text
+/Users/jacob/Workspace/codex-lb-cinamon/CodexLBCinamonMenubar.app
+```
+
+자주 쓴다면 이 `.app` 아이콘을 Dock에 끌어다 놓고 Dock에서 클릭하면 됩니다. 이 런처는 repo 루트에 둔 개발 체크아웃용 앱 번들이며, 내부적으로 `.venv/bin/python -m app.cli menubar --manage-server --start-on-launch`를 백그라운드로 실행합니다.
+
 `menubar --manage-server`는 macOS 상단 메뉴바에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기를 제어합니다. `--start-on-launch`를 함께 주면 메뉴바 앱 시작 시 추적된 백그라운드 서버가 없을 때 자동으로 서버를 시작합니다.
 
 이미 실행 중인 서버만 읽고 싶다면 기존처럼 base URL을 지정해 상태 앱으로만 실행할 수 있습니다.
