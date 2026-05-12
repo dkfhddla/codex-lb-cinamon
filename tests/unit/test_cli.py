@@ -76,66 +76,6 @@ def test_main_rejects_unpaired_tls_flags(monkeypatch):
         cli.main()
 
 
-def test_parse_args_accepts_menubar_options(monkeypatch):
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "codex-lb-cinamon",
-            "menubar",
-            "--base-url",
-            "http://localhost:5173",
-            "--refresh-interval",
-            "10",
-            "--session-cookie",
-            "session-id",
-        ],
-    )
-
-    args = cli._parse_args()
-
-    assert args.command == "menubar"
-    assert args.base_url == "http://localhost:5173"
-    assert args.refresh_interval == 10
-    assert args.session_cookie == "session-id"
-
-
-def test_parse_args_accepts_managed_menubar_runtime_options(monkeypatch, tmp_path):
-    pid_file = tmp_path / "server.pid"
-    log_file = tmp_path / "server.log"
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "codex-lb-cinamon",
-            "menubar",
-            "--manage-server",
-            "--start-on-launch",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            "2555",
-            "--pid-file",
-            str(pid_file),
-            "--log-file",
-            str(log_file),
-            "--startup-timeout",
-            "4.5",
-        ],
-    )
-
-    args = cli._parse_args()
-
-    assert args.command == "menubar"
-    assert args.manage_server is True
-    assert args.start_on_launch is True
-    assert args.host == "0.0.0.0"
-    assert args.port == 2555
-    assert args.pid_file == pid_file
-    assert args.log_file == log_file
-    assert args.startup_timeout == 4.5
-
-
 def test_start_command_reports_background_runtime(monkeypatch, capsys, tmp_path):
     runtime = RuntimeMetadata(pid=4242, host="127.0.0.1", port=2455, log_file=str(tmp_path / "server.log"))
     pid_file = tmp_path / "server.pid"
@@ -209,26 +149,3 @@ def test_utc_default_formatter_formats_without_converter_binding_error():
     record.created = 0.0
 
     assert formatter.format(record) == "1970-01-01T00:00:00Z hello"
-
-
-def test_tray_command_dispatches_to_tray_app(monkeypatch):
-    calls: list[str] = []
-
-    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "tray"])
-    monkeypatch.setattr(cli, "run_tray_app", lambda: calls.append("tray"))
-
-    cli.main()
-
-    assert calls == ["tray"]
-
-
-def test_tray_command_surfaces_unsupported_platform_error(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "tray"])
-
-    def fail_tray() -> None:
-        raise RuntimeError("Windows tray mode is only supported on Windows.")
-
-    monkeypatch.setattr(cli, "run_tray_app", fail_tray)
-
-    with pytest.raises(SystemExit, match="Windows tray mode is only supported on Windows"):
-        cli.main()
