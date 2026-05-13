@@ -76,6 +76,83 @@ def test_main_rejects_unpaired_tls_flags(monkeypatch):
         cli.main()
 
 
+def test_parse_args_accepts_menubar_options(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "codex-lb-cinamon",
+            "menubar",
+            "--base-url",
+            "http://localhost:5173",
+            "--refresh-interval",
+            "10",
+            "--session-cookie",
+            "session-id",
+        ],
+    )
+
+    args = cli._parse_args()
+
+    assert args.command == "menubar"
+    assert args.base_url == "http://localhost:5173"
+    assert args.refresh_interval == 10
+    assert args.session_cookie == "session-id"
+
+
+def test_parse_args_ignores_invalid_menubar_refresh_env_for_status(monkeypatch):
+    monkeypatch.setenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "bad")
+    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "status"])
+
+    args = cli._parse_args()
+
+    assert args.command == "status"
+
+
+def test_parse_args_rejects_invalid_menubar_refresh_env_for_menubar(monkeypatch):
+    monkeypatch.setenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "bad")
+    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "menubar"])
+
+    with pytest.raises(SystemExit):
+        cli._parse_args()
+
+
+def test_parse_args_accepts_managed_menubar_runtime_options(monkeypatch, tmp_path):
+    pid_file = tmp_path / "server.pid"
+    log_file = tmp_path / "server.log"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "codex-lb-cinamon",
+            "menubar",
+            "--manage-server",
+            "--start-on-launch",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "2555",
+            "--pid-file",
+            str(pid_file),
+            "--log-file",
+            str(log_file),
+            "--startup-timeout",
+            "4.5",
+        ],
+    )
+
+    args = cli._parse_args()
+
+    assert args.command == "menubar"
+    assert args.manage_server is True
+    assert args.start_on_launch is True
+    assert args.host == "0.0.0.0"
+    assert args.port == 2555
+    assert args.pid_file == pid_file
+    assert args.log_file == log_file
+    assert args.startup_timeout == 4.5
+
+
 def test_start_command_reports_background_runtime(monkeypatch, capsys, tmp_path):
     runtime = RuntimeMetadata(pid=4242, host="127.0.0.1", port=2455, log_file=str(tmp_path / "server.log"))
     pid_file = tmp_path / "server.pid"
