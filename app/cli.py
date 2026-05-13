@@ -19,6 +19,8 @@ from app.cli_runtime import (
     start_background_server,
 )
 from app.core.runtime_logging import build_log_config
+from app.menubar_runtime import MenuBarRuntimeOptions, dashboard_url
+from app.menubar_summary import MenuBarConfig
 
 
 def _add_serve_arguments(parser: argparse.ArgumentParser) -> None:
@@ -47,6 +49,40 @@ def _build_parser() -> argparse.ArgumentParser:
     shutdown_parser = subparsers.add_parser("shutdown", help="Stop the tracked background server.")
     shutdown_parser.add_argument("--pid-file", type=Path, default=default_pid_file())
     shutdown_parser.add_argument("--timeout", type=float, default=DEFAULT_SHUTDOWN_TIMEOUT_SECONDS)
+
+    menubar_parser = subparsers.add_parser("menubar", help="Run the macOS menu bar status app.")
+    menubar_parser.add_argument(
+        "--base-url",
+        default=os.getenv("CODEX_LB_MENUBAR_BASE_URL", "http://127.0.0.1:2455"),
+        help="Dashboard base URL to poll.",
+    )
+    menubar_parser.add_argument(
+        "--refresh-interval",
+        type=int,
+        default=int(os.getenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "30")),
+        help="Refresh interval in seconds.",
+    )
+    menubar_parser.add_argument(
+        "--session-cookie",
+        default=os.getenv("CODEX_LB_DASHBOARD_SESSION_COOKIE"),
+        help="Dashboard session id or full Cookie header for password-protected dashboards.",
+    )
+    menubar_parser.add_argument(
+        "--manage-server",
+        action="store_true",
+        help="Expose server lifecycle actions from the macOS menu bar app.",
+    )
+    menubar_parser.add_argument(
+        "--start-on-launch",
+        action="store_true",
+        help="Start the tracked background server when managed menu bar mode launches.",
+    )
+    _add_serve_arguments(menubar_parser)
+    menubar_parser.add_argument("--pid-file", type=Path, default=default_pid_file())
+    menubar_parser.add_argument("--log-file", type=Path, default=default_log_file())
+    menubar_parser.add_argument("--startup-timeout", type=float, default=DEFAULT_STARTUP_TIMEOUT_SECONDS)
+
+    subparsers.add_parser("tray", help="Run the Windows system tray controller.")
 
     return parser
 
@@ -119,6 +155,12 @@ def _run_status(args: argparse.Namespace) -> None:
     print(f"Log file: {Path(metadata.log_file).expanduser()}")
 
 
+def run_tray_app() -> None:
+    from app.tray import run_tray_app as run
+
+    run()
+
+
 def _run_shutdown(args: argparse.Namespace) -> None:
     metadata, stale = load_running_metadata(args.pid_file)
     if metadata is None:
@@ -139,6 +181,37 @@ def _run_shutdown(args: argparse.Namespace) -> None:
     print(f"Stopped codex-lb-cinamon background server (pid {stopped.pid}).")
 
 
+def _run_menubar(args: argparse.Namespace) -> None:
+    from app.menubar_app import run_menu_bar_app
+
+    if args.refresh_interval <= 0:
+        raise SystemExit("--refresh-interval must be greater than 0.")
+    runtime_options = None
+    base_url = args.base_url
+    if args.manage_server:
+        options = _serve_options_from_args(args)
+        _validate_ssl_flags(options)
+        runtime_options = MenuBarRuntimeOptions(
+            host=options.host,
+            port=options.port,
+            ssl_certfile=options.ssl_certfile,
+            ssl_keyfile=options.ssl_keyfile,
+            pid_file=args.pid_file,
+            log_file=args.log_file,
+            startup_timeout_seconds=args.startup_timeout,
+            start_on_launch=args.start_on_launch,
+        )
+        base_url = dashboard_url(options.host, options.port)
+    run_menu_bar_app(
+        MenuBarConfig(
+            base_url=base_url,
+            refresh_interval_seconds=args.refresh_interval,
+            session_cookie=args.session_cookie,
+        ),
+        runtime_options=runtime_options,
+    )
+
+
 def main() -> None:
     args = _parse_args()
     command = args.command
@@ -154,6 +227,15 @@ def main() -> None:
         return
     if command == "shutdown":
         _run_shutdown(args)
+        return
+    if command == "menubar":
+        _run_menubar(args)
+        return
+    if command == "tray":
+        try:
+            run_tray_app()
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
         return
 
     raise SystemExit(f"Unsupported command: {command}")
