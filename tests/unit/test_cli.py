@@ -100,6 +100,23 @@ def test_parse_args_accepts_menubar_options(monkeypatch):
     assert args.session_cookie == "session-id"
 
 
+def test_parse_args_ignores_invalid_menubar_refresh_env_for_status(monkeypatch):
+    monkeypatch.setenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "bad")
+    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "status"])
+
+    args = cli._parse_args()
+
+    assert args.command == "status"
+
+
+def test_parse_args_rejects_invalid_menubar_refresh_env_for_menubar(monkeypatch):
+    monkeypatch.setenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "bad")
+    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "menubar"])
+
+    with pytest.raises(SystemExit):
+        cli._parse_args()
+
+
 def test_parse_args_accepts_managed_menubar_runtime_options(monkeypatch, tmp_path):
     pid_file = tmp_path / "server.pid"
     log_file = tmp_path / "server.log"

@@ -59,7 +59,7 @@ def _build_parser() -> argparse.ArgumentParser:
     menubar_parser.add_argument(
         "--refresh-interval",
         type=int,
-        default=int(os.getenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "30")),
+        default=os.getenv("CODEX_LB_MENUBAR_REFRESH_INTERVAL", "30"),
         help="Refresh interval in seconds.",
     )
     menubar_parser.add_argument(
