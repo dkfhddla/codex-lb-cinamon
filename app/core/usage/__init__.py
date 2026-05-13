@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Iterable, Mapping
 
 from app.core.plan_types import normalize_account_plan_type
@@ -15,25 +15,34 @@ from app.core.usage.types import (
 )
 from app.db.models import Account
 
+_PLUS_CAPACITY_CREDITS_PRIMARY = 225.0
+_PLUS_CAPACITY_CREDITS_SECONDARY = 7560.0
+_PRO_LITE_PROMO_END = date(2026, 5, 31)
+
 PLAN_CAPACITY_CREDITS_PRIMARY = {
     "free": 0.0,
-    "plus": 225.0,
-    "business": 225.0,
-    "team": 225.0,
-    "edu": 225.0,
-    "pro": 1500.0,
-    "enterprise": 1500.0,
+    "plus": _PLUS_CAPACITY_CREDITS_PRIMARY,
+    "pro_lite": _PLUS_CAPACITY_CREDITS_PRIMARY * 5,
+    "pro": _PLUS_CAPACITY_CREDITS_PRIMARY * 20,
+    "business": _PLUS_CAPACITY_CREDITS_PRIMARY,
+    "team": _PLUS_CAPACITY_CREDITS_PRIMARY,
+    "edu": _PLUS_CAPACITY_CREDITS_PRIMARY,
+    "enterprise": _PLUS_CAPACITY_CREDITS_PRIMARY,
 }
 
 PLAN_CAPACITY_CREDITS_SECONDARY = {
     "free": 1134.0,
-    "plus": 7560.0,
-    "business": 7560.0,
-    "team": 7560.0,
-    "edu": 7560.0,
-    "pro": 50400.0,
-    "enterprise": 50400.0,
+    "plus": _PLUS_CAPACITY_CREDITS_SECONDARY,
+    "pro_lite": _PLUS_CAPACITY_CREDITS_SECONDARY * 5,
+    "pro": _PLUS_CAPACITY_CREDITS_SECONDARY * 20,
+    "business": _PLUS_CAPACITY_CREDITS_SECONDARY,
+    "team": _PLUS_CAPACITY_CREDITS_SECONDARY,
+    "edu": _PLUS_CAPACITY_CREDITS_SECONDARY,
+    "enterprise": _PLUS_CAPACITY_CREDITS_SECONDARY,
 }
+
+_PRO_LITE_PROMO_CAPACITY_CREDITS_PRIMARY = _PLUS_CAPACITY_CREDITS_PRIMARY * 10
+_PRO_LITE_PROMO_CAPACITY_CREDITS_SECONDARY = _PLUS_CAPACITY_CREDITS_SECONDARY * 10
 
 DEFAULT_WINDOW_MINUTES_PRIMARY = 300
 DEFAULT_WINDOW_MINUTES_SECONDARY = 10080
@@ -141,16 +150,26 @@ def summarize_usage_window(
     )
 
 
-def capacity_for_plan(plan_type: str | None, window: str) -> float | None:
+def capacity_for_plan(plan_type: str | None, window: str, *, today: date | None = None) -> float | None:
     normalized = normalize_account_plan_type(plan_type)
     if not normalized:
         return None
     window_key = _normalize_window_key(window)
+    if normalized == "pro_lite" and _pro_lite_promo_is_active(today):
+        if window_key == "primary":
+            return _PRO_LITE_PROMO_CAPACITY_CREDITS_PRIMARY
+        if window_key == "secondary":
+            return _PRO_LITE_PROMO_CAPACITY_CREDITS_SECONDARY
     if window_key == "primary":
         return PLAN_CAPACITY_CREDITS_PRIMARY.get(normalized)
     if window_key == "secondary":
         return PLAN_CAPACITY_CREDITS_SECONDARY.get(normalized)
     return None
+
+
+def _pro_lite_promo_is_active(today: date | None) -> bool:
+    current = today if today is not None else date.today()
+    return current <= _PRO_LITE_PROMO_END
 
 
 def default_window_minutes(window: str) -> int | None:
