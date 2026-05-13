@@ -4,6 +4,7 @@ from typing import Final
 
 ACCOUNT_PLAN_TYPES: Final[set[str]] = {
     "free",
+    "go",
     "plus",
     "pro_lite",
     "pro",
@@ -14,17 +15,24 @@ ACCOUNT_PLAN_TYPES: Final[set[str]] = {
 }
 
 ACCOUNT_PLAN_TYPE_ALIASES: Final[dict[str, str]] = {
-    "prolite": "pro_lite",
-    "pro-lite": "pro_lite",
+    "education": "edu",
+    "higher education": "edu",
+    "higher_education": "edu",
     "pro lite": "pro_lite",
+    "pro-100": "pro_lite",
+    "pro-200": "pro",
+    "pro-lite": "pro_lite",
+    "pro 100": "pro_lite",
+    "pro 200": "pro",
+    "pro100": "pro_lite",
+    "pro200": "pro",
+    "prolite": "pro_lite",
 }
 
 RATE_LIMIT_PLAN_TYPES: Final[set[str]] = {
     *ACCOUNT_PLAN_TYPES,
     "guest",
-    "go",
     "free_workspace",
-    "education",
     "quorum",
     "k12",
 }
