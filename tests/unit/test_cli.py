@@ -226,3 +226,26 @@ def test_utc_default_formatter_formats_without_converter_binding_error():
     record.created = 0.0
 
     assert formatter.format(record) == "1970-01-01T00:00:00Z hello"
+
+
+def test_tray_command_dispatches_to_tray_app(monkeypatch):
+    calls: list[str] = []
+
+    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "tray"])
+    monkeypatch.setattr(cli, "run_tray_app", lambda: calls.append("tray"))
+
+    cli.main()
+
+    assert calls == ["tray"]
+
+
+def test_tray_command_surfaces_unsupported_platform_error(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["codex-lb-cinamon", "tray"])
+
+    def fail_tray() -> None:
+        raise RuntimeError("Windows tray mode is only supported on Windows.")
+
+    monkeypatch.setattr(cli, "run_tray_app", fail_tray)
+
+    with pytest.raises(SystemExit, match="Windows tray mode is only supported on Windows"):
+        cli.main()

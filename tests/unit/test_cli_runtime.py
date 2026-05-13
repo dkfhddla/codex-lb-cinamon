@@ -48,6 +48,47 @@ def test_load_running_metadata_removes_stale_pid_file(monkeypatch, tmp_path: Pat
     assert not pid_file.exists()
 
 
+def test_is_process_running_treats_os_error_as_not_running(monkeypatch) -> None:
+    def fake_kill(pid: int, signal: int) -> None:
+        del pid, signal
+        raise OSError("invalid parameter")
+
+    monkeypatch.setattr(cli_runtime.os, "name", "posix")
+    monkeypatch.setattr(cli_runtime.os, "kill", fake_kill)
+
+    assert cli_runtime.is_process_running(4242) is False
+
+
+def test_is_process_running_treats_permission_error_as_running(monkeypatch) -> None:
+    def fake_kill(pid: int, signal: int) -> None:
+        del pid, signal
+        raise PermissionError("access denied")
+
+    monkeypatch.setattr(cli_runtime.os, "name", "posix")
+    monkeypatch.setattr(cli_runtime.os, "kill", fake_kill)
+
+    assert cli_runtime.is_process_running(4242) is True
+
+
+def test_is_process_running_uses_windows_process_probe(monkeypatch) -> None:
+    calls: list[int] = []
+
+    def fake_windows_probe(pid: int) -> bool:
+        calls.append(pid)
+        return True
+
+    def fake_kill(pid: int, signal: int) -> None:
+        del pid, signal
+        raise AssertionError("Windows process checks must not use os.kill(pid, 0)")
+
+    monkeypatch.setattr(cli_runtime.os, "name", "nt")
+    monkeypatch.setattr(cli_runtime, "_is_windows_process_running", fake_windows_probe)
+    monkeypatch.setattr(cli_runtime.os, "kill", fake_kill)
+
+    assert cli_runtime.is_process_running(4242) is True
+    assert calls == [4242]
+
+
 def test_start_background_server_writes_runtime_metadata(monkeypatch, tmp_path: Path) -> None:
     pid_file = tmp_path / "server.pid"
     log_file = tmp_path / "server.log"

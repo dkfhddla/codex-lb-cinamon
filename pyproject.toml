@@ -54,6 +54,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+tray = [
+    "pillow>=10.0",
+    "pystray>=0.19.5",
+]
 metrics = ["prometheus-client>=0.20"]
 tracing = [
     "opentelemetry-api>=1.25",

@@ -28,6 +28,7 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/coverage/
+frontend/package-lock.json
 
 # Editors/OS
 .DS_Store
@@ -40,6 +41,7 @@ frontend/coverage/
 # Local
 .local/
 .worktrees/
+.tray-run/
 certs/
 
 .codex-lb/
