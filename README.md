@@ -71,54 +71,6 @@ codex-lb-cinamon shutdown
 codex-lb-cinamon serve
 ```
 
-macOS 메뉴바 앱 실행:
-
-```bash
-# 메뉴바 앱에서 서버 시작/종료까지 함께 제어
-codex-lb-cinamon menubar --manage-server --start-on-launch
-```
-
-개발 체크아웃에서 실행한다면 같은 명령 앞에 `uv run`을 붙이면 됩니다.
-
-```bash
-uv run codex-lb-cinamon menubar --manage-server --start-on-launch
-```
-
-터미널 없이 원클릭으로 실행하려면 Finder에서 repo 루트 폴더를 열고 `CodexLBCinamonMenubar.app` 아이콘을 더블클릭합니다.
-
-```text
-/Users/jacob/Workspace/codex-lb-cinamon/CodexLBCinamonMenubar.app
-```
-
-자주 쓴다면 이 `.app` 아이콘을 Dock에 끌어다 놓고 Dock에서 클릭하면 됩니다. 이 런처는 repo 루트에 둔 개발 체크아웃용 앱 번들이며, 내부적으로 `.venv/bin/python -m app.cli menubar --manage-server --start-on-launch`를 백그라운드로 실행합니다.
-
-`menubar --manage-server`는 macOS 상단 메뉴바에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기를 제어합니다. `--start-on-launch`를 함께 주면 메뉴바 앱 시작 시 추적된 백그라운드 서버가 없을 때 자동으로 서버를 시작합니다.
-
-이미 실행 중인 서버만 읽고 싶다면 기존처럼 base URL을 지정해 상태 앱으로만 실행할 수 있습니다.
-
-```bash
-codex-lb-cinamon menubar --base-url http://127.0.0.1:2455
-```
-
-Windows 트레이 앱 실행:
-
-```powershell
-# 트레이 기능에 필요한 선택 의존성까지 설치
-pip install "codex-lb-cinamon[tray]"
-
-# 트레이 아이콘 실행
-codex-lb-cinamon tray
-```
-
-개발 체크아웃에서 실행한다면 선택 의존성을 동기화한 뒤 `uv run`으로 실행하면 됩니다.
-
-```powershell
-uv sync --extra tray
-uv run codex-lb-cinamon tray
-```
-
-`tray`는 Windows 시스템 트레이에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기, Windows 시작 프로그램 등록을 제어하는 앱입니다. Windows 전용이며, 서버가 꺼져 있으면 트레이 메뉴에서 시작할 수 있습니다.
-
 기본 PID 파일과 로그 파일은 아래 경로를 사용합니다.
 
 ```text
@@ -128,7 +80,7 @@ Windows: %USERPROFILE%\.codex-lb\server.pid
 Windows: %USERPROFILE%\.codex-lb\server.log
 ```
 
-원하면 `start`에는 `--pid-file`, `--log-file`, `--host`, `--port`를 함께 줄 수 있고, `serve`에는 `--host`, `--port`, `--ssl-certfile`, `--ssl-keyfile`를 함께 줄 수 있습니다. `menubar --manage-server`도 같은 서버 bind/TLS 옵션과 `--pid-file`, `--log-file`, `--startup-timeout`을 지원합니다.
+원하면 `start`에는 `--pid-file`, `--log-file`, `--host`, `--port`를 함께 줄 수 있고, `serve`에는 `--host`, `--port`, `--ssl-certfile`, `--ssl-keyfile`를 함께 줄 수 있습니다.
 
 ## Remote Setup
 
