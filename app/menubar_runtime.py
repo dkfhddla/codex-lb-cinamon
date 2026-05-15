@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,12 @@ class MenuBarRuntimeOptions:
     log_file: Path
     startup_timeout_seconds: float
     start_on_launch: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderSyncResult:
+    succeeded: bool
+    message: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +98,35 @@ def start_menu_bar_runtime(options: MenuBarRuntimeOptions) -> RuntimeMetadata:
 
 def stop_menu_bar_runtime(options: MenuBarRuntimeOptions) -> RuntimeMetadata | None:
     return shutdown_background_server(options.pid_file)
+
+
+def sync_codex_provider(*, timeout_seconds: float = 120.0) -> ProviderSyncResult:
+    try:
+        completed = subprocess.run(
+            ["codex-provider", "sync"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except FileNotFoundError:
+        return ProviderSyncResult(
+            succeeded=False,
+            message="codex-provider command not found",
+        )
+    except subprocess.TimeoutExpired:
+        return ProviderSyncResult(
+            succeeded=False,
+            message=f"codex-provider sync timed out after {timeout_seconds:g}s",
+        )
+
+    output = (completed.stderr or completed.stdout).strip()
+    if completed.returncode == 0:
+        return ProviderSyncResult(succeeded=True, message=output or "Provider sync completed")
+    return ProviderSyncResult(
+        succeeded=False,
+        message=output or f"codex-provider sync exited with status {completed.returncode}",
+    )
 
 
 def stopped_runtime_snapshot(status: MenuBarRuntimeStatus) -> MenuBarSnapshot:

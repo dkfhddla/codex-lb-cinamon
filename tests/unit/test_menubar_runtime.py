@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from app.cli_runtime import RuntimeMetadata
 from app.menubar_runtime import (
@@ -9,6 +10,7 @@ from app.menubar_runtime import (
     get_menu_bar_runtime_status,
     start_menu_bar_runtime,
     stopped_runtime_snapshot,
+    sync_codex_provider,
 )
 
 
@@ -49,7 +51,7 @@ def test_get_menu_bar_runtime_status_reports_stopped_defaults(monkeypatch, tmp_p
 
 def test_start_menu_bar_runtime_uses_background_lifecycle(monkeypatch, tmp_path: Path) -> None:
     runtime = RuntimeMetadata(pid=4321, host="127.0.0.1", port=2455, log_file=str(tmp_path / "server.log"))
-    calls: list[object] = []
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
     options = MenuBarRuntimeOptions(
         host="127.0.0.1",
         port=2455,
@@ -89,3 +91,34 @@ def test_stopped_runtime_snapshot_reports_stopped_state(tmp_path: Path) -> None:
 def test_dashboard_page_url_points_to_spa_dashboard_route() -> None:
     assert dashboard_page_url("http://127.0.0.1:2455") == "http://127.0.0.1:2455/dashboard"
     assert dashboard_page_url("http://127.0.0.1:2455/") == "http://127.0.0.1:2455/dashboard"
+
+
+def test_sync_codex_provider_runs_provider_sync(monkeypatch) -> None:
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return type("Completed", (), {"returncode": 0, "stdout": "synced\n", "stderr": ""})()
+
+    monkeypatch.setattr("app.menubar_runtime.subprocess.run", fake_run)
+
+    result = sync_codex_provider(timeout_seconds=3.0)
+
+    assert result.succeeded is True
+    assert result.message == "synced"
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    assert args == (["codex-provider", "sync"],)
+    assert kwargs["timeout"] == 3.0
+
+
+def test_sync_codex_provider_reports_missing_command(monkeypatch) -> None:
+    def fake_run(*args, **kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr("app.menubar_runtime.subprocess.run", fake_run)
+
+    result = sync_codex_provider()
+
+    assert result.succeeded is False
+    assert result.message == "codex-provider command not found"
