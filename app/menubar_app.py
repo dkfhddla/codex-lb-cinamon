@@ -9,6 +9,7 @@ from typing import Any, cast
 from app.menubar_runtime import (
     MenuBarRuntimeOptions,
     MenuBarRuntimeStatus,
+    dashboard_page_url,
     start_menu_bar_runtime,
     status_from_options,
     stop_menu_bar_runtime,
@@ -337,7 +338,10 @@ def _run_cocoa_app(config: MenuBarConfig, runtime_options: MenuBarRuntimeOptions
             Thread(target=worker, daemon=True).start()
 
         def openDashboard_(self, _sender: object) -> None:
-            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(self.config.base_url))
+            base_url = self.config.base_url
+            if self._runtime_status is not None:
+                base_url = self._runtime_status.dashboard_url
+            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(dashboard_page_url(base_url)))
 
         def openAccountDetails_(self, sender: Any) -> None:
             tag = int(sender.tag())

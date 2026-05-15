@@ -113,3 +113,7 @@ def dashboard_url(host: str, port: int) -> str:
     if ":" in dashboard_host and not dashboard_host.startswith("["):
         dashboard_host = f"[{dashboard_host}]"
     return f"http://{dashboard_host}:{port}"
+
+
+def dashboard_page_url(base_url: str) -> str:
+    return f"{base_url.rstrip('/')}/dashboard"
