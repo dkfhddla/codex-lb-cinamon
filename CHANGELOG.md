@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.17.2](https://github.com/CINEV/codex-lb-cinamon/compare/v1.17.1...v1.17.2) (2026-05-15)
+
+
+### Bug Fixes
+
+* **proxy:** force platform service tier default ([e2719c2](https://github.com/CINEV/codex-lb-cinamon/commit/e2719c2452cf6d4eccba23610811708ad9a6383a))
+* **proxy:** force platform service tier default ([e9c82b7](https://github.com/CINEV/codex-lb-cinamon/commit/e9c82b77f2df1738683fd5fd12ec58f6aaf01952))
+
 ## [1.17.1](https://github.com/CINEV/codex-lb-cinamon/compare/v1.17.0...v1.17.1) (2026-05-15)
 
 
