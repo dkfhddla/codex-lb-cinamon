@@ -109,3 +109,25 @@ def test_shutdown_background_server_terminates_pid_and_cleans_metadata(monkeypat
     assert metadata.pid == 4242
     assert calls == [4242]
     assert not pid_file.exists()
+
+
+def test_shutdown_background_server_force_kills_after_graceful_timeout(monkeypatch, tmp_path: Path) -> None:
+    pid_file = tmp_path / "server.pid"
+    pid_file.write_text(
+        json.dumps({"pid": 4242, "host": "127.0.0.1", "port": 2455, "log_file": str(tmp_path / "server.log")}),
+        encoding="utf-8",
+    )
+    calls: list[tuple[str, int]] = []
+    running_states = iter([True, True, False])
+
+    monkeypatch.setattr(cli_runtime, "terminate_process", lambda pid: calls.append(("terminate", pid)))
+    monkeypatch.setattr(cli_runtime, "kill_process", lambda pid: calls.append(("kill", pid)), raising=False)
+    monkeypatch.setattr(cli_runtime, "is_process_running", lambda pid: next(running_states))
+    monkeypatch.setattr(cli_runtime.time, "sleep", lambda _seconds: None)
+
+    metadata = cli_runtime.shutdown_background_server(pid_file, timeout_seconds=0)
+
+    assert metadata is not None
+    assert metadata.pid == 4242
+    assert calls == [("terminate", 4242), ("kill", 4242)]
+    assert not pid_file.exists()
