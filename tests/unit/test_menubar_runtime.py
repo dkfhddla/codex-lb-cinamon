@@ -5,6 +5,7 @@ from pathlib import Path
 from app.cli_runtime import RuntimeMetadata
 from app.menubar_runtime import (
     MenuBarRuntimeOptions,
+    dashboard_page_url,
     get_menu_bar_runtime_status,
     start_menu_bar_runtime,
     stopped_runtime_snapshot,
@@ -83,3 +84,8 @@ def test_stopped_runtime_snapshot_reports_stopped_state(tmp_path: Path) -> None:
     assert snapshot.title == "Stopped"
     assert ("Status", "Stopped") in snapshot.rows
     assert ("Dashboard", "http://127.0.0.1:2455") in snapshot.rows
+
+
+def test_dashboard_page_url_points_to_spa_dashboard_route() -> None:
+    assert dashboard_page_url("http://127.0.0.1:2455") == "http://127.0.0.1:2455/dashboard"
+    assert dashboard_page_url("http://127.0.0.1:2455/") == "http://127.0.0.1:2455/dashboard"
