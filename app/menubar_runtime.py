@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,6 +15,16 @@ from app.cli_runtime import (
     start_background_server,
 )
 from app.menubar_summary import MenuBarSnapshot
+
+_CODEX_PROVIDER_BIN_ENV = "CODEX_PROVIDER_BIN"
+_CODEX_PROVIDER_COMMAND = "codex-provider"
+_PROVIDER_SEARCH_PATHS = (
+    Path.home() / ".local" / "bin",
+    Path("/opt/homebrew/bin"),
+    Path("/usr/local/bin"),
+    Path("/usr/bin"),
+    Path("/bin"),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,12 +113,61 @@ def stop_menu_bar_runtime(options: MenuBarRuntimeOptions) -> RuntimeMetadata | N
     return shutdown_background_server(options.pid_file)
 
 
+def resolve_codex_provider_command() -> Path | None:
+    configured = os.getenv(_CODEX_PROVIDER_BIN_ENV)
+    if configured:
+        configured_path = Path(configured).expanduser()
+        if configured_path.is_file():
+            return configured_path
+        return None
+
+    executable = shutil.which(_CODEX_PROVIDER_COMMAND, path=_codex_provider_search_path())
+    return None if executable is None else Path(executable)
+
+
+def _codex_provider_search_path() -> str:
+    paths: list[str] = []
+
+    def add_path(path: Path | str | None) -> None:
+        if path is None:
+            return
+        value = str(path)
+        if value and value not in paths:
+            paths.append(value)
+
+    add_path(Path(sys.executable).resolve().parent)
+    for path in os.getenv("PATH", "").split(os.pathsep):
+        add_path(path)
+    for path in _PROVIDER_SEARCH_PATHS:
+        add_path(path)
+    return os.pathsep.join(paths)
+
+
+def _codex_provider_env() -> dict[str, str]:
+    env: dict[str, str] = {}
+    for key in ("HOME", "USER", "LOGNAME", "SHELL", "CODEX_HOME"):
+        value = os.getenv(key)
+        if value is not None:
+            env[key] = value
+    env["PATH"] = _codex_provider_search_path()
+    return env
+
+
 def sync_codex_provider(*, timeout_seconds: float = 120.0) -> ProviderSyncResult:
+    command = resolve_codex_provider_command()
+    if command is None:
+        configured = os.getenv(_CODEX_PROVIDER_BIN_ENV)
+        message = (
+            f"codex-provider command not found at {configured}" if configured else "codex-provider command not found"
+        )
+        return ProviderSyncResult(succeeded=False, message=message)
+
     try:
         completed = subprocess.run(
-            ["codex-provider", "sync"],
+            [str(command), "sync"],
             capture_output=True,
             check=False,
+            env=_codex_provider_env(),
             text=True,
             timeout=timeout_seconds,
         )
@@ -113,6 +175,11 @@ def sync_codex_provider(*, timeout_seconds: float = 120.0) -> ProviderSyncResult
         return ProviderSyncResult(
             succeeded=False,
             message="codex-provider command not found",
+        )
+    except OSError as exc:
+        return ProviderSyncResult(
+            succeeded=False,
+            message=f"codex-provider sync failed: {exc}",
         )
     except subprocess.TimeoutExpired:
         return ProviderSyncResult(

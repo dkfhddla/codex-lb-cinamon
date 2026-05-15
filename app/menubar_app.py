@@ -461,11 +461,16 @@ def _run_cocoa_app(config: MenuBarConfig, runtime_options: MenuBarRuntimeOptions
             )
 
             def worker() -> None:
-                result = sync_codex_provider()
-                self._provider_sync_status = "Last sync OK" if result.succeeded else "Last sync failed"
-                self._provider_sync_error = "" if result.succeeded else result.message
-                self._provider_sync_in_progress = False
-                call_after(self.refreshNow_, None)
+                try:
+                    result = sync_codex_provider()
+                    self._provider_sync_status = "Last sync OK" if result.succeeded else "Last sync failed"
+                    self._provider_sync_error = "" if result.succeeded else result.message
+                except Exception as exc:  # pragma: no cover - surfaced in menu UI
+                    self._provider_sync_status = "Last sync failed"
+                    self._provider_sync_error = str(exc)
+                finally:
+                    self._provider_sync_in_progress = False
+                    call_after(self.refreshNow_, None)
 
             Thread(target=worker, daemon=True).start()
 
