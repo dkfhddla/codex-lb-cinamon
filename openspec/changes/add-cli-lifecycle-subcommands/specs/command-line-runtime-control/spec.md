@@ -83,6 +83,15 @@ The CLI MUST provide a `shutdown` subcommand that reads the tracked PID file, se
 - **AND** waits for the process to exit
 - **AND** removes the PID file after shutdown completes
 
+#### Scenario: Shutdown force-stops a wedged tracked server
+
+- **WHEN** the operator runs `codex-lb-cinamon shutdown`
+- **AND** the PID file points to a running tracked server
+- **AND** the process does not exit before the graceful shutdown timeout
+- **THEN** the CLI sends that process a forceful termination signal
+- **AND** waits for the process to exit
+- **AND** removes the PID file after shutdown completes
+
 #### Scenario: Shutdown removes stale runtime metadata
 
 - **WHEN** the operator runs `codex-lb-cinamon shutdown`

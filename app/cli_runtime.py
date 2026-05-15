@@ -16,6 +16,7 @@ from app.core.config.settings import get_settings
 
 DEFAULT_STARTUP_TIMEOUT_SECONDS: Final[float] = 30.0
 DEFAULT_SHUTDOWN_TIMEOUT_SECONDS: Final[float] = 15.0
+DEFAULT_FORCE_SHUTDOWN_TIMEOUT_SECONDS: Final[float] = 5.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,12 +223,28 @@ def shutdown_background_server(
             return metadata
         time.sleep(0.2)
 
+    kill_process(metadata.pid)
+    force_deadline = time.monotonic() + DEFAULT_FORCE_SHUTDOWN_TIMEOUT_SECONDS
+    while time.monotonic() < force_deadline:
+        if not is_process_running(metadata.pid):
+            remove_runtime_metadata(pid_file)
+            return metadata
+        time.sleep(0.2)
+
     raise RuntimeError(f"timed out waiting for pid {metadata.pid} to stop (pid file: {pid_file.expanduser()})")
 
 
 def terminate_process(pid: int) -> None:
     try:
         os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
+
+def kill_process(pid: int) -> None:
+    force_signal = getattr(signal, "SIGKILL", signal.SIGTERM)
+    try:
+        os.kill(pid, force_signal)
     except ProcessLookupError:
         return
 
