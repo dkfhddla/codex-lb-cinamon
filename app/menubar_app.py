@@ -14,6 +14,7 @@ from app.menubar_runtime import (
     status_from_options,
     stop_menu_bar_runtime,
     stopped_runtime_snapshot,
+    sync_codex_provider,
 )
 from app.menubar_summary import (
     AccountMenuCard,
@@ -191,6 +192,28 @@ def _run_cocoa_app(config: MenuBarConfig, runtime_options: MenuBarRuntimeOptions
             view.addSubview_(error_label)
         return view
 
+    def make_provider_sync_view(status: str, error: str) -> Any:
+        width = content_width
+        height = 52.0 if error else 36.0
+        view = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, width, height))
+
+        heading = make_label("Provider Sync", 11, True)
+        heading.setTextColor_(NSColor.secondaryLabelColor())
+        heading.setFrame_(NSMakeRect(14, height - 24, 90, 16))
+        view.addSubview_(heading)
+
+        status_label = make_label(status, 11, False)
+        status_label.setTextColor_(NSColor.labelColor())
+        status_label.setFrame_(NSMakeRect(112, height - 24, width - 126, 16))
+        view.addSubview_(status_label)
+
+        if error:
+            error_label = make_label(error, 10, False)
+            error_label.setTextColor_(NSColor.systemRedColor())
+            error_label.setFrame_(NSMakeRect(14, 8, width - 28, 14))
+            view.addSubview_(error_label)
+        return view
+
     def add_info_column(view: Any, items: tuple[tuple[str, str], ...], x: float, y: float) -> None:
         for index, (label, value) in enumerate(items):
             row_y = y - (index * 17)
@@ -302,6 +325,9 @@ def _run_cocoa_app(config: MenuBarConfig, runtime_options: MenuBarRuntimeOptions
             self._detail_urls = []
             self._runtime_status = None
             self._runtime_error = ""
+            self._provider_sync_status = "Idle"
+            self._provider_sync_error = ""
+            self._provider_sync_in_progress = False
             self._start_on_launch_attempted = False
             self.applySnapshot_(MenuBarSnapshot(title="5h --", rows=(("Status", "Loading..."),)))
             return self
@@ -413,10 +439,40 @@ def _run_cocoa_app(config: MenuBarConfig, runtime_options: MenuBarRuntimeOptions
                 add_action(self, "Stop Server", "stopServer:")
                 add_action(self, "Open Log", "openLog:")
             self.menu.addItem_(NSMenuItem.separatorItem())
+            add_view_item(self.menu, make_provider_sync_view(self._provider_sync_status, self._provider_sync_error))
+            add_action(self, "Sync Providers", "syncProviders:")
+            self.menu.addItem_(NSMenuItem.separatorItem())
             add_action(self, "Refresh Now", "refreshNow:")
             add_action(self, "Open Dashboard", "openDashboard:")
             self.menu.addItem_(NSMenuItem.separatorItem())
             add_action(self, "Quit", "quit:")
+
+        def syncProviders_(self, _sender: object) -> None:
+            if self._provider_sync_in_progress:
+                return
+            self._provider_sync_in_progress = True
+            self._provider_sync_status = "Running..."
+            self._provider_sync_error = ""
+            self.applySnapshot_(
+                MenuBarSnapshot(
+                    title=self.status_item.button().title(),
+                    rows=(("Status", "Syncing..."),),
+                )
+            )
+
+            def worker() -> None:
+                try:
+                    result = sync_codex_provider()
+                    self._provider_sync_status = "Last sync OK" if result.succeeded else "Last sync failed"
+                    self._provider_sync_error = "" if result.succeeded else result.message
+                except Exception as exc:  # pragma: no cover - surfaced in menu UI
+                    self._provider_sync_status = "Last sync failed"
+                    self._provider_sync_error = str(exc)
+                finally:
+                    self._provider_sync_in_progress = False
+                    call_after(self.refreshNow_, None)
+
+            Thread(target=worker, daemon=True).start()
 
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)

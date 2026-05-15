@@ -92,7 +92,13 @@ uv run codex-lb-cinamon menubar --manage-server --start-on-launch
 
 자주 쓴다면 이 `.app` 아이콘을 Dock에 끌어다 놓고 Dock에서 클릭하면 됩니다. 이 런처는 repo 루트에 둔 개발 체크아웃용 앱 번들이며, 내부적으로 `.venv/bin/python -m app.cli menubar --manage-server --start-on-launch`를 백그라운드로 실행합니다.
 
-`menubar --manage-server`는 macOS 상단 메뉴바에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기를 제어합니다. `--start-on-launch`를 함께 주면 메뉴바 앱 시작 시 추적된 백그라운드 서버가 없을 때 자동으로 서버를 시작합니다.
+`menubar --manage-server`는 macOS 상단 메뉴바에서 서버 시작/종료, 상태 새로고침, 대시보드 열기, 로그 열기, `codex-provider sync` 실행을 제어합니다. `--start-on-launch`를 함께 주면 메뉴바 앱 시작 시 추적된 백그라운드 서버가 없을 때 자동으로 서버를 시작합니다.
+
+`Sync Providers` 메뉴는 `codex-provider` 실행 파일이 필요합니다. LaunchAgent나 Dock 실행은 shell PATH를 그대로 상속하지 않을 수 있으므로, 자동 감지가 실패하는 환경에서는 `CODEX_PROVIDER_BIN`에 절대경로를 지정하세요.
+
+```bash
+export CODEX_PROVIDER_BIN=/opt/homebrew/bin/codex-provider
+```
 
 이 명령은 메뉴바 앱 자체를 터미널 foreground 프로세스로 실행합니다. 따라서 터미널을 닫으면 메뉴바 앱도 함께 종료됩니다. `--manage-server`와 `--start-on-launch`는 추적된 API 서버를 백그라운드로 시작하고 관리하는 옵션이며, 메뉴바 앱 프로세스를 macOS 로그인 항목이나 LaunchAgent로 등록하지는 않습니다.
 
@@ -131,6 +137,11 @@ uv tool install --reinstall .
   </array>
   <key>RunAtLoad</key>
   <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>CODEX_PROVIDER_BIN</key>
+    <string>/opt/homebrew/bin/codex-provider</string>
+  </dict>
   <key>KeepAlive</key>
   <dict>
     <key>SuccessfulExit</key>
