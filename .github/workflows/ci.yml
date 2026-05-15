@@ -12,6 +12,7 @@ concurrency:
 jobs:
   frontend-lint:
     name: Frontend lint (eslint)
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -31,6 +32,7 @@ jobs:
 
   frontend-typecheck:
     name: Frontend type check (tsc)
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -50,6 +52,7 @@ jobs:
 
   frontend-test:
     name: Frontend tests (vitest + coverage)
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -74,6 +77,7 @@ jobs:
 
   frontend-build:
     name: Frontend build (vite)
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -158,6 +162,7 @@ jobs:
 
   test:
     name: Tests (pytest, ${{ matrix.slice.name }})
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -207,6 +212,7 @@ jobs:
 
   test-postgres:
     name: Tests (pytest, PostgreSQL)
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -341,6 +347,7 @@ jobs:
 
   docker:
     name: Docker build
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--branches--') }}
     runs-on: ubuntu-24.04
 
     steps:
