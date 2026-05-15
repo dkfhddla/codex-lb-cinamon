@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/CINEV/codex-lb-cinamon/compare/v1.17.0...v1.18.0) (2026-05-15)
+
+
+### Features
+
+* **proxy:** harden platform cache alerts ([dd0fd98](https://github.com/CINEV/codex-lb-cinamon/commit/dd0fd983ef5801718e08c6e0e5d7b7799eb07da7))
+
 ## [1.17.0](https://github.com/CINEV/codex-lb-cinamon/compare/v1.16.0...v1.17.0) (2026-05-14)
 
 
